@@ -8,6 +8,7 @@ def read_1D_data(fp):
     :type fp: str
     :return data: q/I/sig data
     :rtype data: pandas.core.frame.DataFrame
+    :return metadata: metadata read from file header 
     :rtype metdata: dict
     """
     metadata = {}

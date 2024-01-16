@@ -4,7 +4,24 @@ import manipulate
 
 def splice_datasets(low_q_data, hi_q_data, low_q_limit, hi_q_limit, low_q_source = None, hi_q_source = None):
     """
-    Splice together low_q_data and hi_q_data. At q<lo_q_limit, only low_q_data included. Above hi_q_limit, only hi_q_data included. Between lo_q and hi_q limits, both datasets included
+    Splice together low_q_data and hi_q_data. 
+    
+    At q<lo_q_limit, only low_q_data included. Above hi_q_limit, only hi_q_data included. Between lo_q and hi_q limits, both datasets included
+
+    :param low_q_data: Dataset to keep low q data for
+    :type low_q_data: pandas.core.frame.DataFrame
+    :param hi_q_data: Dataset to keep high q data for
+    :type hi_q_data: pandas.core.frame.DataFrame
+    :param low_q_limit: q value for low q cutoff
+    :type low_q_limit: float
+    :param hi_q_limit: q value for hi q cutoff
+    :type hi_q_limit: float
+    :param low_q_source: Dataset name for low q data
+    :type loq_q_source: str, None
+    :param hi_q_source: Dataset name for hi q data
+    :type hi_q_source: str, None
+    :return spliced_data: Combined dataset
+    :rtype spliced_data: pandas.core.frame.DataFrame
     """
     low_q_include = low_q_data[low_q_data['q'] < hi_q_limit].copy()
     hi_q_include = hi_q_data[hi_q_data['q'] > low_q_limit].copy()
@@ -21,6 +38,13 @@ def splice_datasets(low_q_data, hi_q_data, low_q_limit, hi_q_limit, low_q_source
 def find_overlap(data1, data2):
     """
     Returns the subset of data1 that has q values strictly enclosed by q range of data2
+
+    :param data1: SAXS data
+    :type data1: pandas.core.frame.DataFrame
+    :param data2: SAXS data 
+    :type data2: pandas.core.frame.DataFrame
+    :return data1_overlap: subset of data1 with q values within q range of data2
+    :rtype data1_overlap: pandas.core.frame.DataFrame
     """
 
     # Find the range of data1 that is entirely within data2
@@ -37,6 +61,14 @@ def find_overlap(data1, data2):
     return data1_overlap
 
 def forward_difference(data):
+    """
+    Finite first order forward differential
+
+    :param data: SAXS data
+    :type data: pandas.core.frame.DataFrame
+    :return data: Data with 1st derivative added as 'dIdq' column
+    :rtype data: pandas.core.frame.DataFrame
+    """
 
 
     q = data['q']
@@ -53,6 +85,18 @@ def forward_difference(data):
     return data
 
 def deriv_ratio(data1, data2):
+    """Compute the ratio of the 1st derivatives of 2 datasets
+
+    Datasets should have same length and q grid
+
+    :param data1: SAXS data
+    :type data1: pandas.core.frame.DataFrame
+    :param data2: SAXS data
+    :type data2: pandas.core.frame.DataFrame
+    :return ratio: Ratio of data1 derivative over data2 derivative
+    :rtype ratio: Pandas series?
+    
+    """
     deriv1 = forward_difference(data1)
     deriv2 = forward_difference(data2)
     
@@ -62,8 +106,14 @@ def deriv_ratio(data1, data2):
 
 
 def noise_score(data, n_pts = 20):
-    """
-    Calculate a measure of noisiness in data by looking at ratio of data to n_pts local running average (backwards average here I think)
+    """Calculate a measure of noisiness in data by looking at ratio of data to n_pts local running average (backwards average here I think)
+
+    :param data: SAXS data
+    :type data: pandas.core.frame.DataFrame
+    :param n_pts: number of points to use for running average
+    :type n_pts: int
+    :return noise_score: measure of noisiness of data
+    :rtype noise_score: series? 
     """
     running_average = np.convolve(data['I'], np.ones(n_pts)/n_pts, mode = 'same')
 
@@ -76,6 +126,17 @@ def noise_score(data, n_pts = 20):
 def find_qlim_low(low_q_data, hi_q_data, val_threshold = 0.1, slope_threshold = 0.4):
     """
     Find the low q merge limit using combination of curve closeness and slope criteria 
+
+    :param low_q_data: low q SAXS data
+    :type low_q_data: pandas.core.frame.DataFrame
+    :param hi_q_data: hi q SAXS data
+    :type hi_q_data: pandas.core.frame.DataFrame
+    :param val_threshold: threshold for the ratio of low q data to hi q data for low q limit to be met
+    :type val_threshold: float
+    :param slope_threshold: threshold for the ratio of slopes of low_q_data and hi_q_data to be close for low q limit to be met
+    :type slope_threshold: float
+    :return q: q value for low q criteria to be satisfied
+    :type q: float
     """
     slope_ratio = deriv_ratio(low_q_data, hi_q_data)
     val_ratio = manipulate.ratio_running_average(low_q_data['I'], hi_q_data['I'])
@@ -98,6 +159,17 @@ def find_qlim_low(low_q_data, hi_q_data, val_threshold = 0.1, slope_threshold = 
 def find_qlim_hi(low_q_data, qlim_low, noise_threshold = 0.2, n_pts = 20):
     """
     Find the hi q merge limit using noise criteria on low q data 
+
+    :param low_q_data: low q SAXS data
+    :type low_q_data: pandas.core.frame.DataFrame
+    :param hi_q_data: hi q SAXS data
+    :type hi_q_data: pandas.core.frame.DataFrame
+    :param noise_threshold: threhold for amount of noise to tolerate before tripping hi q limit
+    :type noise_threshold: float
+    :param n_pts: number of points to average over for noise calculation
+    :type n_pts: int
+    :retun q: hi q limit
+    :type q: float
     """
     
     noise_value = noise_score(low_q_data, n_pts = n_pts)
@@ -112,6 +184,24 @@ def find_qlim_hi(low_q_data, qlim_low, noise_threshold = 0.2, n_pts = 20):
 
 
 def get_merge_limits(low_q_data, hi_q_data, val_threshold = 0.1, slope_threshold = 0.4, noise_threshold = 0.2, n_pts = 20):
+    """ Find low q and hi q merge limits for data using criteria
+
+    :param low_q_data: low q SAXS data
+    :type low_q_data: pandas.core.frame.DataFrame
+    :param hi_q_data: hi q SAXS data
+    :type hi_q_data: pandas.core.frame.DataFrame
+    :param val_threshold: threshold for the ratio of low q data to hi q data for low q limit to be met
+    :type val_threshold: float
+    :param slope_threshold: threshold for the ratio of slopes of low_q_data and hi_q_data to be close for low q limit to be met
+    :type slope_threshold: float
+    :param noise_threshold: threhold for amount of noise to tolerate before tripping hi q limit
+    :type noise_threshold: float
+    :param n_pts: number of points to average over for noise calculation
+    :type n_pts: int
+    :return (qlim_low, qlim_hi): Tuple of low and hi q limits as floats
+    :rtype (qlim_low, qlim_hi): (float, float)
+    
+    """
     
     qlim_low = find_qlim_low(low_q_data, hi_q_data, val_threshold = val_threshold, slope_threshold = slope_threshold)
     qlim_hi = find_qlim_hi(low_q_data, qlim_low, noise_threshold = noise_threshold, n_pts = n_pts)
@@ -119,9 +209,35 @@ def get_merge_limits(low_q_data, hi_q_data, val_threshold = 0.1, slope_threshold
     return (qlim_low, qlim_hi)
 
 
-def auto_merge(low_q_data, hi_q_data, low_q_source = None, hi_q_source = None, val_threshold = 0.2, slope_threshold = 0.4, noise_threshold = 0.25, n_pts = 20):
+def auto_merge(low_q_data, hi_q_data, low_q_source = None, hi_q_source = None, val_threshold = 0.2, slope_threshold = 0.4, noise_threshold = 0.25, n_pts = 20, low_q_hard_merge = None, hi_q_hard_merge = None):
     """
-    Wrapper function to handle merging tasks 
+    Merge low_q_data with hi_q_data. Select merge points using criteria specified by user
+
+
+    :param low_q_data: low q SAXS data
+    :type low_q_data: pandas.core.frame.DataFrame
+    :param hi_q_data: hi q SAXS data
+    :type hi_q_data: pandas.core.frame.DataFrame
+    :param low_q_source: Dataset name for low q data source
+    :type low_q_source: str
+    :param hi_q_source: Dataset name for hi q data source
+    :type hi_q_source: str
+    :param val_threshold: threshold for the ratio of low q data to hi q data for low q limit to be met
+    :type val_threshold: float
+    :param slope_threshold: threshold for the ratio of slopes of low_q_data and hi_q_data to be close for low q limit to be met
+    :type slope_threshold: float
+    :param noise_threshold: threhold for amount of noise to tolerate before tripping hi q limit
+    :type noise_threshold: float
+    :param n_pts: number of points to average over for noise calculation
+    :type n_pts: int
+    :param low_q_hard_merge: Set to a q value to override automatic merge region calculations
+    :type low_q_hard_merge: None, float
+    :param hi_q_hard_merge: set to a q value to override automatic merge region calculation
+    :type hi_q_hard_merge: None, float 
+    :return spliced: Dataset spliced together from low q and hi q data at merge limits
+    :rtype spliced: pandas.core.frame.DataFrame
+    :param merge_metadata: Metadata from merge process with data sources and merge parameters
+    :rtype merge_metadata: dict
     
     Takes subtracted/chopped data 
     """
@@ -130,13 +246,22 @@ def auto_merge(low_q_data, hi_q_data, low_q_source = None, hi_q_source = None, v
     hi_q_overlap = find_overlap(hi_q_data, low_q_data)
     
     hi_q_interpolated = manipulate.interpolate_on_q(low_q_overlap, hi_q_overlap)
-    
-    low_q_lim, hi_q_lim = get_merge_limits(low_q_overlap, hi_q_interpolated, val_threshold = val_threshold, slope_threshold = slope_threshold, noise_threshold = noise_threshold, n_pts = n_pts)
+
+    if low_q_hard_merge is not None and hi_q_hard_merge is not None:
+        low_q_lim = low_q_hard_merge
+        hi_q_lim = hi_q_hard_merge
+    else:   
+        low_q_lim, hi_q_lim = get_merge_limits(low_q_overlap, hi_q_interpolated, val_threshold = val_threshold, slope_threshold = slope_threshold, noise_threshold = noise_threshold, n_pts = n_pts)
+
+    if low_q_hard_merge is not None:
+        low_q_lim = low_q_hard_merge
+    if hi_q_hard_merge is not None:
+        hi_q_lim = hi_q_hard_merge
     
     print(f'low q merge lim: {low_q_lim}')
     print(f'hi q merge lim: {hi_q_lim}')
     
-    spliced = splice_datasets(low_q_overlap, hi_q_overlap, low_q_lim, hi_q_lim, low_q_source, hi_q_source)
+    spliced = splice_datasets(low_q_data, hi_q_data, low_q_lim, hi_q_lim, low_q_source, hi_q_source)
     
     merge_metadata = {'low_q_source':low_q_source, 'hi_q_source':hi_q_source, 'low_q_limit':low_q_lim, 'hi_q_limit':hi_q_lim, 'low_q_value_threshold':val_threshold, 'low_q_slope_threshold':slope_threshold, 'hi_q_noise_threshold':noise_threshold, 'averaging_n_pts':n_pts}
     
