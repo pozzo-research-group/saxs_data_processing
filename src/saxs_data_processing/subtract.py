@@ -1,6 +1,7 @@
 import numpy as np
 import manipulate
 
+
 def find_ratio_peak(ratio_avg):
     """
     Find max value of ratio using max
@@ -11,15 +12,19 @@ def find_ratio_peak(ratio_avg):
     :return ind: index of max value in data
     :rtype ind: int 
     """
-    
+
     avg_copy = ratio_avg.copy()
     avg_copy[avg_copy == np.inf] = 0
     ind = np.nanargmax(avg_copy)
-    
+
     return ind
 
 
-def subtract_background(data, background, scale_background = False, scale_qmin = 1e-4, scale_qmax = 1e-3):
+def subtract_background(data,
+                        background,
+                        scale_background=False,
+                        scale_qmin=1e-4,
+                        scale_qmax=1e-3):
     """
     Subtract background from data
 
@@ -43,20 +48,25 @@ def subtract_background(data, background, scale_background = False, scale_qmin =
     # check that q values line up for everything
     assert np.isclose(data['q'].to_numpy(), background['q'].to_numpy()).all()
     # once we get fancier look into allowance for slop or interpolation options. For now throw out anything not compliant ^^
-    
+
     if scale_background:
-        background = manipulate.scale_data(data, background, scale_qmin, scale_qmax)
-        
+        background = manipulate.scale_data(data, background, scale_qmin,
+                                           scale_qmax)
+
     subtracted_I = data['I'] - background['I']
 
     subtracted_data = data.copy()
 
     subtracted_data['I'] = subtracted_I
-    
+
     return subtracted_data
 
 
-def select_valid_data(signal, background, lowq_thresh = 5, hiq_thresh = 5, hiq_avg_pts = 10):
+def select_valid_data(signal,
+                      background,
+                      lowq_thresh=5,
+                      hiq_thresh=5,
+                      hiq_avg_pts=10):
     """
     Find the region of valid data in SAXS signal
     
@@ -78,7 +88,9 @@ def select_valid_data(signal, background, lowq_thresh = 5, hiq_thresh = 5, hiq_a
     :rtype hiq_lim: int
     """
 
-    assert len(signal) == len(background), 'Signal and background data sets need to have same number of data points'
+    assert len(signal) == len(
+        background
+    ), 'Signal and background data sets need to have same number of data points'
 
     #TODO: check that signal and background are on the same grid
 
@@ -88,18 +100,17 @@ def select_valid_data(signal, background, lowq_thresh = 5, hiq_thresh = 5, hiq_a
     hiq_lim = None
 
     last_n_ratios = []
-    rolling_average_ratio = manipulate.ratio_running_average(signal['I'], background['I'], n_pts = hiq_avg_pts)
+    rolling_average_ratio = manipulate.ratio_running_average(signal['I'],
+                                                             background['I'],
+                                                             n_pts=hiq_avg_pts)
 
     # need to find peak to engage hi-q limit finder
     ratio_peak_ind = find_ratio_peak(rolling_average_ratio)
-
-
 
     for i, ratio in enumerate(rolling_average_ratio):
         if ratio > lowq_thresh:
             if lowq_lim is None:
                 lowq_lim = i
-
 
         if lowq_lim is not None:
             if i > ratio_peak_ind:
@@ -107,19 +118,33 @@ def select_valid_data(signal, background, lowq_thresh = 5, hiq_thresh = 5, hiq_a
                     if hiq_lim is None:
                         hiq_lim = i
                         break
-                        
+
     if lowq_lim is None:
-        raise AssertionError('Failed to find region of valid data (low q limit not found). Check that your sample scatters reasonably well')
+        raise AssertionError(
+            'Failed to find region of valid data (low q limit not found). Check that your sample scatters reasonably well'
+        )
     if hiq_lim is None:
-        raise AssertionError('Failed to find region of valid data (low q limit not found). Check that your sample scatters reasonably well')
-        
+        raise AssertionError(
+            'Failed to find region of valid data (low q limit not found). Check that your sample scatters reasonably well'
+        )
+
     if hiq_lim - lowq_lim < 30:
-        raise AssertionError('Insufficient data points in q range with scattering. Check data quality')
+        raise AssertionError(
+            'Insufficient data points in q range with scattering. Check data quality'
+        )
 
     return lowq_lim, hiq_lim
 
 
-def chop_subtract(signal, background, lowq_thresh = 5, hiq_thresh = 5, hiq_avg_pts = 10, scale = False, low_q_hard_merge = None, hi_q_hard_merge = None, hi_q_cutoff = True):
+def chop_subtract(signal,
+                  background,
+                  lowq_thresh=5,
+                  hiq_thresh=5,
+                  hiq_avg_pts=10,
+                  scale=False,
+                  low_q_hard_merge=None,
+                  hi_q_hard_merge=None,
+                  hi_q_cutoff=True):
     """
     Background subtract and select valid data region for unprocessed 1D SAXS data
 
@@ -152,22 +177,23 @@ def chop_subtract(signal, background, lowq_thresh = 5, hiq_thresh = 5, hiq_avg_p
         hiq = hi_q_hard_merge
 
     else:
-        loq, hiq = select_valid_data(signal, background, lowq_thresh = lowq_thresh, hiq_thresh= hiq_thresh, hiq_avg_pts = hiq_avg_pts)
+        loq, hiq = select_valid_data(signal,
+                                     background,
+                                     lowq_thresh=lowq_thresh,
+                                     hiq_thresh=hiq_thresh,
+                                     hiq_avg_pts=hiq_avg_pts)
 
-
-    # still need to override valid data range with user suppplied points if provided 
+    # still need to override valid data range with user suppplied points if provided
     if low_q_hard_merge is not None:
         loq = low_q_hard_merge
     if hi_q_hard_merge is not None:
         hiq = hi_q_hard_merge
 
-    subtracted_signal = subtract_background(signal, background, scale = False)
+    subtracted_signal = subtract_background(signal, background, scale=False)
 
     if not hi_q_cutoff:
         hiq = -1
-        
 
     chopped_subtracted = subtracted_signal.iloc[loq:hiq].copy()
 
     return chopped_subtracted
-

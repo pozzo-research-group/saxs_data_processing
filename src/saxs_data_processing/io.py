@@ -1,6 +1,7 @@
 import pandas as pd
 from utils import numerify
 
+
 def read_1D_data(fp):
     """Read a 1D Xenocs data .dat file and return data as a pandas dataframe with q/I/sig values and metadata with header data
 
@@ -17,13 +18,13 @@ def read_1D_data(fp):
     sig = []
     header_count = 0
 
-    in_data = False # flag for if we are read into data yet
+    in_data = False  # flag for if we are read into data yet
 
     with open(fp, 'rt') as f:
         for line in f:
             if not in_data:
-                if line[:2] == '##': #metadata section header 
-                    header_count +=1
+                if line[:2] == '##':  #metadata section header
+                    header_count += 1
                     continue
                 elif line[:2] == '# ':
                     items = line.split()
@@ -37,9 +38,8 @@ def read_1D_data(fp):
                 I.append(numerify(vals[1]))
                 sig.append(numerify(vals[2]))
 
+    data = pd.DataFrame({'q': q, 'I': I, 'sig': sig})
 
-    data = pd.DataFrame({'q':q, 'I':I, 'sig':sig})
-    
     return data, metadata
 
 
@@ -55,13 +55,16 @@ def write_dat(data, metadata, fp):
     """
 
     with open(fp, 'wt') as f:
-        f.write('#'*80 + '\n')
+        f.write('#' * 80 + '\n')
         for key, val in metadata.items():
-            f.write('# ' + str(key) + ' '*(32 - len(str(key))) + str(val) + '\n')
-        f.write('#'*80 + '\n')
-        f.write('q(A-1)                    I(q)                      Sig(q) \n')                    
+            f.write('# ' + str(key) + ' ' * (32 - len(str(key))) + str(val) +
+                    '\n')
+        f.write('#' * 80 + '\n')
+        f.write(
+            'q(A-1)                    I(q)                      Sig(q) \n')
         for i, row in data.iterrows():
             q = str(row['q'])
             i = str(row['I'])
             sig = str(row['sig'])
-            f.write(q + ' '*(26 - len(q)) + i + ' '*(26 - len(i)) + sig + '\n') 
+            f.write(q + ' ' * (26 - len(q)) + i + ' ' * (26 - len(i)) + sig +
+                    '\n')
