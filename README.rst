@@ -34,10 +34,9 @@ saxs_data_processing
 ====================
 
 
-    Add a short description here!
+   SAXS data processing tools
 
-
-A longer description of your project goes here...
+Tools to process SAXS data, specifically from a Xenocs XEUSSS 3.0. Everything here assumes you are starting with reduced 1D data. These tools aim to automate background correction, q-range merging, and potentially modelling. Under development. 
 
 
 .. _pyscaffold-notes:
