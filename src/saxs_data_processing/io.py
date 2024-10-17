@@ -1,5 +1,5 @@
 import pandas as pd
-from utils import numerify
+from saxs_data_processing.utils import numerify
 
 
 def read_1D_data(fp):
@@ -9,7 +9,7 @@ def read_1D_data(fp):
     :type fp: str
     :return data: q/I/sig data
     :rtype data: pandas.core.frame.DataFrame
-    :return metadata: metadata read from file header 
+    :return metadata: metadata read from file header
     :rtype metdata: dict
     """
     metadata = {}
@@ -30,7 +30,7 @@ def read_1D_data(fp):
                     items = line.split()
                     metadata[items[1]] = numerify(items[2])
 
-                elif line[0] == 'q' and header_count == 2:
+                elif line.strip()[0] == 'q' and header_count == 2:
                     in_data = True
             elif in_data:
                 vals = line.split()
@@ -45,7 +45,7 @@ def read_1D_data(fp):
 
 def write_dat(data, metadata, fp):
     """Write a .dat datafile for data and metadata at fp
-    
+
     :param data: q/I/sig data to write
     :type data: pandas.core.frame.DataFrame
     :param metadata: metadata dictionary with metadata to write to file header
