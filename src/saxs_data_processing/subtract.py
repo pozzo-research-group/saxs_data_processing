@@ -1,5 +1,6 @@
 import numpy as np
-import manipulate
+from saxs_data_processing import manipulate
+import warnings
 
 
 def find_ratio_peak(ratio_avg):
@@ -7,10 +8,10 @@ def find_ratio_peak(ratio_avg):
     Find max value of ratio using max
     Returns index of peak. Handles nans and infs somewhat gracefully
 
-    :param ratio_avg: data to find the max of 
+    :param ratio_avg: data to find the max of
     :type ratio_avg: pandas.core.frame.DataFrame
     :return ind: index of max value in data
-    :rtype ind: int 
+    :rtype ind: int
     """
 
     avg_copy = ratio_avg.copy()
@@ -44,18 +45,21 @@ def subtract_background(data,
     :rtype subtracted_data: pandas.core.frame.DataFrame
 
     """
+    # Get overlapping q range and only subtract/return data from here
+    data_inclusive = data[data['q'].isin(background['q'])]
+    background_inclusive = background[background['q'].isin(data['q'])]
 
     # check that q values line up for everything
-    assert np.isclose(data['q'].to_numpy(), background['q'].to_numpy()).all()
+    assert np.isclose(data_inclusive['q'].to_numpy(), background_inclusive['q'].to_numpy()).all()
     # once we get fancier look into allowance for slop or interpolation options. For now throw out anything not compliant ^^
 
     if scale_background:
-        background = manipulate.scale_data(data, background, scale_qmin,
+        background_inclusive = manipulate.scale_data(data_inclusive, background_inclusive, scale_qmin,
                                            scale_qmax)
 
-    subtracted_I = data['I'] - background['I']
+    subtracted_I = data_inclusive['I'] - background_inclusive['I']
 
-    subtracted_data = data.copy()
+    subtracted_data = data_inclusive.copy()
 
     subtracted_data['I'] = subtracted_I
 
@@ -69,9 +73,9 @@ def select_valid_data(signal,
                       hiq_avg_pts=10):
     """
     Find the region of valid data in SAXS signal
-    
-    Considers the ratio of signal to background to identify regions with enough scattering to provide information. Threshold for valid data deterined by user. 
-    
+
+    Considers the ratio of signal to background to identify regions with enough scattering to provide information. Threshold for valid data deterined by user.
+
     :param signal: signal saxs data
     :type signal: pandas.core.frame.DataFrame
     :param background: corresponding background
@@ -120,16 +124,17 @@ def select_valid_data(signal,
                         break
 
     if lowq_lim is None:
-        raise AssertionError(
+        warnings.warn(
             'Failed to find region of valid data (low q limit not found). Check that your sample scatters reasonably well'
         )
+        return lowq_lim, hiq_lim
     if hiq_lim is None:
-        raise AssertionError(
+        warnings.warn(
             'Failed to find region of valid data (low q limit not found). Check that your sample scatters reasonably well'
         )
-
+        return lowq_lim, hiq_lim
     if hiq_lim - lowq_lim < 30:
-        raise AssertionError(
+        warnings.warn(
             'Insufficient data points in q range with scattering. Check data quality'
         )
 
@@ -153,7 +158,7 @@ def chop_subtract(signal,
     :param background: SAXS background data
     :type background: pandas.core.frame.DataFrame
     :param lowq_thresh: ratio criteria for low q data validity. Signal must be lowq_thresh times larger than background for data to be kept
-    :type lowq_thresh: float 
+    :type lowq_thresh: float
     :param hiq_thresh: ratio criteria for hi q data validity. Signal must be hiq_thresh times larger than backbround for data to be kept
     :type hiq_thresh: int
     :param hiq_avg_pts: Number of points to average over for noise reduction for hi-q threshold
@@ -165,10 +170,14 @@ def chop_subtract(signal,
     :param hi_q_hard_merge: None - use threshold based valid data selection, int - use this as hi q data validity limit
     :type hi_q_hard_merge: None, int
     :param hi_q_cutoff: whether or not to chop off hi q data based on ratio limit
-    :param hi_q_cutoff: bool 
+    :param hi_q_cutoff: bool
     :return chopped_subtracted: 1D saxs data, background subtracted and chopped to valid data q range
     :rtype chopped_subtracted: pandas.core.frame.DataFrame
     """
+
+    # Get overlapping q range and only subtract/return data from here
+    signal = signal[signal['q'].isin(background['q'])]
+    background = background[background['q'].isin(signal['q'])]
     assert np.isclose(signal['q'].to_numpy(), background['q'].to_numpy()).all()
 
     # if user supplied both limits, no need to run auto find. else do run this
@@ -183,13 +192,17 @@ def chop_subtract(signal,
                                      hiq_thresh=hiq_thresh,
                                      hiq_avg_pts=hiq_avg_pts)
 
+    if (loq == None) or (hiq == None):
+        warnings.warn('Issue during data selection, check data quality')
+        return None
+
     # still need to override valid data range with user suppplied points if provided
     if low_q_hard_merge is not None:
         loq = low_q_hard_merge
     if hi_q_hard_merge is not None:
         hiq = hi_q_hard_merge
 
-    subtracted_signal = subtract_background(signal, background, scale=False)
+    subtracted_signal = subtract_background(signal, background, scale_background = scale)
 
     if not hi_q_cutoff:
         hiq = -1

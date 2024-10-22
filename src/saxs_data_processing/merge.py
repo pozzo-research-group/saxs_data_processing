@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-import manipulate
+from saxs_data_processing import manipulate
 
 
 def splice_datasets(low_q_data,
@@ -10,8 +10,8 @@ def splice_datasets(low_q_data,
                     low_q_source=None,
                     hi_q_source=None):
     """
-    Splice together low_q_data and hi_q_data. 
-    
+    Splice together low_q_data and hi_q_data.
+
     At q<lo_q_limit, only low_q_data included. Above hi_q_limit, only hi_q_data included. Between lo_q and hi_q limits, both datasets included
 
     :param low_q_data: Dataset to keep low q data for
@@ -48,7 +48,7 @@ def find_overlap(data1, data2):
 
     :param data1: SAXS data
     :type data1: pandas.core.frame.DataFrame
-    :param data2: SAXS data 
+    :param data2: SAXS data
     :type data2: pandas.core.frame.DataFrame
     :return data1_overlap: subset of data1 with q values within q range of data2
     :rtype data1_overlap: pandas.core.frame.DataFrame
@@ -103,7 +103,7 @@ def deriv_ratio(data1, data2):
     :type data2: pandas.core.frame.DataFrame
     :return ratio: Ratio of data1 derivative over data2 derivative
     :rtype ratio: Pandas series?
-    
+
     """
     deriv1 = forward_difference(data1)
     deriv2 = forward_difference(data2)
@@ -121,7 +121,7 @@ def noise_score(data, n_pts=20):
     :param n_pts: number of points to use for running average
     :type n_pts: int
     :return noise_score: measure of noisiness of data
-    :rtype noise_score: series? 
+    :rtype noise_score: series?
     """
     running_average = np.convolve(data['I'],
                                   np.ones(n_pts) / n_pts,
@@ -139,7 +139,7 @@ def find_qlim_low(low_q_data,
                   val_threshold=0.1,
                   slope_threshold=0.4):
     """
-    Find the low q merge limit using combination of curve closeness and slope criteria 
+    Find the low q merge limit using combination of curve closeness and slope criteria
 
     :param low_q_data: low q SAXS data
     :type low_q_data: pandas.core.frame.DataFrame
@@ -173,7 +173,7 @@ def find_qlim_low(low_q_data,
 
 def find_qlim_hi(low_q_data, qlim_low, noise_threshold=0.2, n_pts=20):
     """
-    Find the hi q merge limit using noise criteria on low q data 
+    Find the hi q merge limit using noise criteria on low q data
 
     :param low_q_data: low q SAXS data
     :type low_q_data: pandas.core.frame.DataFrame
@@ -220,7 +220,7 @@ def get_merge_limits(low_q_data,
     :type n_pts: int
     :return (qlim_low, qlim_hi): Tuple of low and hi q limits as floats
     :rtype (qlim_low, qlim_hi): (float, float)
-    
+
     """
 
     qlim_low = find_qlim_low(low_q_data,
@@ -268,13 +268,13 @@ def auto_merge(low_q_data,
     :param low_q_hard_merge: Set to a q value to override automatic merge region calculations
     :type low_q_hard_merge: None, float
     :param hi_q_hard_merge: set to a q value to override automatic merge region calculation
-    :type hi_q_hard_merge: None, float 
+    :type hi_q_hard_merge: None, float
     :return spliced: Dataset spliced together from low q and hi q data at merge limits
     :rtype spliced: pandas.core.frame.DataFrame
     :param merge_metadata: Metadata from merge process with data sources and merge parameters
     :rtype merge_metadata: dict
-    
-    Takes subtracted/chopped data 
+
+    Takes subtracted/chopped data
     """
 
     low_q_overlap = find_overlap(low_q_data, hi_q_data)

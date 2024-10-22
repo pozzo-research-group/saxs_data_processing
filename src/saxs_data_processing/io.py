@@ -28,6 +28,8 @@ def read_1D_data(fp):
                     continue
                 elif line[:2] == '# ':
                     items = line.split()
+                    if len(items) == 2:
+                        items.append(None)
                     metadata[items[1]] = numerify(items[2])
 
                 elif line.strip()[0] == 'q' and header_count == 2:
