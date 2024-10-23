@@ -103,6 +103,7 @@ def select_valid_data(signal,
     lowq_lim = None
     hiq_lim = None
 
+
     last_n_ratios = []
     rolling_average_ratio = manipulate.ratio_running_average(signal['I'],
                                                              background['I'],

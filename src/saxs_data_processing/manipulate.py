@@ -24,6 +24,7 @@ def ratio_running_average(a, b, n_pts=10):
 
     ratio = a / b
 
+
     running_average = np.convolve(ratio, np.ones(n_pts) / n_pts, mode='same')
 
     return running_average
