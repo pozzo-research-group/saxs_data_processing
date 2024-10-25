@@ -69,6 +69,8 @@ def mcsas_fit(fp_load, fp_write, n_threads = 40):
     print(f'data fed to McSAS3 is {mds.measDataLink}')
     md = mds.measData.copy() # here we copy the data we want for fitting.
 
+    mds.dataRange = [md['Q'][0].min(), md['Q'][0].max()]
+
     model = sasmodels.core.load_model_info('sphere')
     
     mh = McHat.McHat(
@@ -79,8 +81,8 @@ def mcsas_fit(fp_load, fp_write, n_threads = 40):
                 staticParameters={ # these are the parameters we don't want to change:
                     "background": 0, # is optimized separately, always set to zero
                     "scale": 1, # ibid.
-                    "sld": 8.575, # SLD of silver 
-                    "sld_solvent": 9.611,# SLD of water
+                    "sld": 8.575, # SLD of silica
+                    "sld_solvent": 9.611,# SLD of ethanol
                     },
                 maxIter=100000, # don't try more than this many iterations
                 convCrit=1, # convergence criterion, should be 1 if reasonable uncertainty estimates are provided, to prevent over- or under-fitting
