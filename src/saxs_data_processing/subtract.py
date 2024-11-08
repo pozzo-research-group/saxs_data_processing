@@ -21,11 +21,9 @@ def find_ratio_peak(ratio_avg):
     return ind
 
 
-def subtract_background(data,
-                        background,
-                        scale_background=False,
-                        scale_qmin=1e-4,
-                        scale_qmax=1e-3):
+def subtract_background(
+    data, background, scale_background=False, scale_qmin=1e-4, scale_qmax=1e-3
+):
     """
     Subtract background from data
 
@@ -46,31 +44,30 @@ def subtract_background(data,
 
     """
     # Get overlapping q range and only subtract/return data from here
-    data_inclusive = data[data['q'].isin(background['q'])]
-    background_inclusive = background[background['q'].isin(data['q'])]
+    data_inclusive = data[data["q"].isin(background["q"])]
+    background_inclusive = background[background["q"].isin(data["q"])]
 
     # check that q values line up for everything
-    assert np.isclose(data_inclusive['q'].to_numpy(), background_inclusive['q'].to_numpy()).all()
+    assert np.isclose(
+        data_inclusive["q"].to_numpy(), background_inclusive["q"].to_numpy()
+    ).all()
     # once we get fancier look into allowance for slop or interpolation options. For now throw out anything not compliant ^^
 
     if scale_background:
-        background_inclusive = manipulate.scale_data(data_inclusive, background_inclusive, scale_qmin,
-                                           scale_qmax)
+        background_inclusive = manipulate.scale_data(
+            data_inclusive, background_inclusive, scale_qmin, scale_qmax
+        )
 
-    subtracted_I = data_inclusive['I'] - background_inclusive['I']
+    subtracted_I = data_inclusive["I"] - background_inclusive["I"]
 
     subtracted_data = data_inclusive.copy()
 
-    subtracted_data['I'] = subtracted_I
+    subtracted_data["I"] = subtracted_I
 
     return subtracted_data
 
 
-def select_valid_data(signal,
-                      background,
-                      lowq_thresh=5,
-                      hiq_thresh=5,
-                      hiq_avg_pts=10):
+def select_valid_data(signal, background, lowq_thresh=5, hiq_thresh=5, hiq_avg_pts=10):
     """
     Find the region of valid data in SAXS signal
 
@@ -94,20 +91,19 @@ def select_valid_data(signal,
 
     assert len(signal) == len(
         background
-    ), 'Signal and background data sets need to have same number of data points'
+    ), "Signal and background data sets need to have same number of data points"
 
-    #TODO: check that signal and background are on the same grid
+    # TODO: check that signal and background are on the same grid
 
-    q = signal['q']
+    q = signal["q"]
 
     lowq_lim = None
     hiq_lim = None
 
-
     last_n_ratios = []
-    rolling_average_ratio = manipulate.ratio_running_average(signal['I'],
-                                                             background['I'],
-                                                             n_pts=hiq_avg_pts)
+    rolling_average_ratio = manipulate.ratio_running_average(
+        signal["I"], background["I"], n_pts=hiq_avg_pts
+    )
 
     # need to find peak to engage hi-q limit finder
     ratio_peak_ind = find_ratio_peak(rolling_average_ratio)
@@ -126,31 +122,33 @@ def select_valid_data(signal,
 
     if lowq_lim is None:
         warnings.warn(
-            'Failed to find region of valid data (low q limit not found). Check that your sample scatters reasonably well'
+            "Failed to find region of valid data (low q limit not found). Check that your sample scatters reasonably well"
         )
         return lowq_lim, hiq_lim
     if hiq_lim is None:
         warnings.warn(
-            'Failed to find region of valid data (low q limit not found). Check that your sample scatters reasonably well'
+            "Failed to find region of valid data (low q limit not found). Check that your sample scatters reasonably well"
         )
         return lowq_lim, hiq_lim
     if hiq_lim - lowq_lim < 30:
         warnings.warn(
-            'Insufficient data points in q range with scattering. Check data quality'
+            "Insufficient data points in q range with scattering. Check data quality"
         )
 
     return lowq_lim, hiq_lim
 
 
-def chop_subtract(signal,
-                  background,
-                  lowq_thresh=5,
-                  hiq_thresh=5,
-                  hiq_avg_pts=10,
-                  scale=False,
-                  low_q_hard_merge=None,
-                  hi_q_hard_merge=None,
-                  hi_q_cutoff=True):
+def chop_subtract(
+    signal,
+    background,
+    lowq_thresh=5,
+    hiq_thresh=5,
+    hiq_avg_pts=10,
+    scale=False,
+    low_q_hard_merge=None,
+    hi_q_hard_merge=None,
+    hi_q_cutoff=True,
+):
     """
     Background subtract and select valid data region for unprocessed 1D SAXS data
 
@@ -177,9 +175,9 @@ def chop_subtract(signal,
     """
 
     # Get overlapping q range and only subtract/return data from here
-    signal = signal[signal['q'].isin(background['q'])]
-    background = background[background['q'].isin(signal['q'])]
-    assert np.isclose(signal['q'].to_numpy(), background['q'].to_numpy()).all()
+    signal = signal[signal["q"].isin(background["q"])]
+    background = background[background["q"].isin(signal["q"])]
+    assert np.isclose(signal["q"].to_numpy(), background["q"].to_numpy()).all()
 
     # if user supplied both limits, no need to run auto find. else do run this
     if low_q_hard_merge is not None and hi_q_hard_merge is not None:
@@ -187,14 +185,16 @@ def chop_subtract(signal,
         hiq = hi_q_hard_merge
 
     else:
-        loq, hiq = select_valid_data(signal,
-                                     background,
-                                     lowq_thresh=lowq_thresh,
-                                     hiq_thresh=hiq_thresh,
-                                     hiq_avg_pts=hiq_avg_pts)
+        loq, hiq = select_valid_data(
+            signal,
+            background,
+            lowq_thresh=lowq_thresh,
+            hiq_thresh=hiq_thresh,
+            hiq_avg_pts=hiq_avg_pts,
+        )
 
     if (loq == None) or (hiq == None):
-        warnings.warn('Issue during data selection, check data quality')
+        warnings.warn("Issue during data selection, check data quality")
         return None
 
     # still need to override valid data range with user suppplied points if provided
@@ -203,7 +203,7 @@ def chop_subtract(signal,
     if hi_q_hard_merge is not None:
         hiq = hi_q_hard_merge
 
-    subtracted_signal = subtract_background(signal, background, scale_background = scale)
+    subtracted_signal = subtract_background(signal, background, scale_background=scale)
 
     if not hi_q_cutoff:
         hiq = -1
