@@ -141,7 +141,7 @@ def load_data_files_biocube(root_dirs, bio_conf):
         uuid_str = re.split("_+", fp.split("/")[-1])[2]
 
         if is_valid_uuid(uuid_str):
-            data = io.read_1D_data(fp)
+            data = read_1D_data(fp)
             if data[1]["BIO_SYSTEM_CONF"] == bio_conf:
                 try:
                     sample_data[uuid_str]
