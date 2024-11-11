@@ -5,6 +5,9 @@ Generic data processing tasks shared between modules
 import numpy as np
 import pandas as pd
 
+from scipy.interpolate import BSpline, splrep
+from scipy.signal import savgol_filter
+
 
 def ratio_running_average(a, b, n_pts=10):
     """
@@ -29,7 +32,7 @@ def ratio_running_average(a, b, n_pts=10):
     return running_average
 
 
-def scale_data(data1, data2, scale_qmin, scale_qmax):
+def scale_data_integral(data1, data2, scale_qmin, scale_qmax):
     """
     scale data2 onto data1 using a scale factor calculated from the difference in integrals of data1 and data2 over the range scale_qmin -> scale_qmax
 
@@ -72,7 +75,7 @@ def scale_data(data1, data2, scale_qmin, scale_qmax):
     return data2_out
 
 
-def interpolate_on_q(target_data, modify_data):
+def interpolate_on_q_linear(target_data, modify_data):
     """
     Linearly interpolate data from modify_data onto q grid from target data
 
@@ -89,3 +92,80 @@ def interpolate_on_q(target_data, modify_data):
     interp_result = pd.DataFrame({"q": target_data["q"], "I": interp_I})
 
     return interp_result
+
+
+def fit_interpolate_spline(q_original, I_original, q_grid, s=0.05, k=3):
+    """
+    Fit a BSpline to I_original and evaluate it at points on q_grid.
+
+    I_original should be de-noised, for example with a savgol filter, before spline fitting.
+
+    :param q_original: Original, as-measured q vector
+    :type q_original: np array
+    :param I_original: Denoised intensities at q_original q points
+    :type I_original: np array
+    :param q_grid: New q points to evaluate spline at
+    :type q_grid: np array
+    :param s: spline smoothing parameter for scipy splrep (https://docs.scipy.org/doc/scipy/reference/generated/scipy.interpolate.splrep.html). default 0.05
+    :type s: float
+    :param k: degree of spline fit, 1 <= k <= 5. see more at scipy.splrep docs linked above.
+    :type k: int
+    :return I_spline: Evaluation of spline fit at q_grid points
+    :type I_spline: np array
+    """
+    assert len(q_original) == len(
+        I_original
+    ), f"q_original and I_original must have same lengths but have lengths {len(q_original)} and {len(I_original)}"
+    spl = BSpline(*splrep(q_original, I_original, s=s, k=k))
+    I_spline = spl(q_grid)
+
+    return I_spline
+
+
+def scale_intensity_highqavg(I_measured, I_target, n_avg):
+    """
+    Scales I_measured onto I_target based on the average value of the last n_avg data points in both.
+
+    Pass intensities that are already in log10 space. Scales by taking average value of I_measured and I_target in 10**(I) space, then multiplying 10**I by their ratio, then returning log((10**I)*ratio).
+    :param I_measured: Measured intensity to be scaled,  in log10 space
+    :type I_measured: np array
+    :param I_target: target intensity to scale I_measured onto, in log10 space
+    :type I_target: np array
+    :param n_avg: the number of high-q data points to incorporate into scaling average calculation
+    :return I_scaled: Scaled I_measured, in log10 space
+    :rtype I_scaled: np array
+    """
+    # 1. convert both back into I space from logI space
+    pow_meas = 10**I_measured
+    pow_target = 10**I_target
+    # 2. get quotient
+    avg_target = np.mean(pow_target[-n_avg:])
+    avg_meas = np.mean(pow_meas[-n_avg:])
+    quotient = np.abs(avg_target / avg_meas)
+    # 3. scale measured
+    scaled_meas = pow_meas * quotient
+    # convert back to log space
+    I_scaled = np.log10(scaled_meas)
+    return I_scaled
+
+    return
+
+
+def denoise_intensity(I_measured, savgol_n=15, savgol_order=3):
+    """
+    Apply Savitzky-Golay smooothing filter to I_measured.
+
+    Scipy SavGol docs: https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.savgol_filter.html
+
+    :param I_measured: Intensity data to apply filter to
+    :type I_measured: np array
+    :param savgol_n: length of savgol filter, default 15
+    :type savgol_n: int
+    :param savgol_order: Order of polynomials to use in filter. Default 3
+    :type savgol_order: int
+    :return I_savgol: Filtered intensity
+    :rtype I_savgol: np array
+    """
+    I_savgol = savgol_filter(I_measured, savgol_n, savgol_order)
+
+    return I_savgol

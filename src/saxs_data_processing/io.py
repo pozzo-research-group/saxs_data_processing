@@ -129,6 +129,8 @@ def load_data_files_biocube(root_dirs, bio_conf):
     # 1. Find all the filepaths in root directories of .dat files
     fps_agg = []
     for root_dir in root_dirs:
+        if root_dir[-1] != "/":
+            root_dir += "/"
         fps = glob.glob("**.dat", root_dir=root_dir, recursive=False)
         fps_agg.extend([root_dir + fp for fp in fps])
 
@@ -157,3 +159,43 @@ def load_data_files_biocube(root_dirs, bio_conf):
             not_data_count += 1
 
     return sample_data, data_fps, fps_agg
+
+
+def load_biocube_data_with_background(background_fps, bio_conf):
+    """
+    Load all 1d .dat xenocs datafiles that are named with the convention '{exposure_num}_{well}-{tray}_{sample_uuid}_000.dat'.
+
+    Pass background_fps, a list of filepaths to background data files. This assumes that all sample data files in the same directory as the background should use that background. Returns 2 dictionaries: 1) {uuid_val:Brenden data tuple for sample data}, 2) {uuid_val: brenden data tuple for associated background}
+
+    :param background_fps: List of absolute filepaths to background scattering data files to use
+    :type background_fps: list of filepaths
+    :param bio_conf: biocube configuration to load. 24 for ESAXS
+    :type bio_conf: int
+    :return sample_data: dict mapping {uuid_val:(3-column dataframe, metadata dict)} data is the sample scattering data
+    :rtype sample_data: dict
+    :return background_data: dict mapping {sample uuid_val:(3-column dataframe, metadata dict)} where data is the background data associated with sample named uuid_val
+    :rtype background data: dict
+    """
+
+    # 1. load background data files and store the filepaths associated with them
+    background_mapping = {}
+
+    for bcg_fp in background_fps:
+        bkg_data = read_1D_data(bcg_fp)
+        root_dir = "/".join(bcg_fp.split("/")[:-1])
+        background_mapping[root_dir] = bkg_data
+
+    # 2. Load the appropriate sample data files from the root directories for background_fps
+    data, data_fps, _ = load_data_files_biocube(
+        list(background_mapping.keys()), bio_conf
+    )
+
+    # 3. generate mapping from sample uuid values to background data
+    uuid2bkg = {}
+    for uuid_val, fp in data_fps.items():
+        root_dir = "/".join(fp.split("/")[:-1])
+        bkg = background_mapping[root_dir]
+
+        uuid2bkg[uuid_val] = bkg
+
+    return data, uuid2bkg
