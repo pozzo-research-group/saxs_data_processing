@@ -94,7 +94,16 @@ def interpolate_on_q_linear(target_data, modify_data):
     return interp_result
 
 
-def fit_interpolate_spline(q_original, I_original, q_grid, s=0.05, k=3):
+def fit_interpolate_spline(
+    q_original,
+    I_original,
+    q_grid,
+    s=0.05,
+    k=3,
+    clip=True,
+    clip_window_loq=10,
+    clip_window_hiq=50,
+):
     """
     Fit a BSpline to I_original and evaluate it at points on q_grid.
 
@@ -110,6 +119,12 @@ def fit_interpolate_spline(q_original, I_original, q_grid, s=0.05, k=3):
     :type s: float
     :param k: degree of spline fit, 1 <= k <= 5. see more at scipy.splrep docs linked above.
     :type k: int
+    :param clip: if True, clip spline blow-ups on extrapolation q points.
+    :type clip: Bool
+    :param clip_window_loq: Window of original q ponts to evaluate for lo q clip min/max
+    :type clip_window: int
+    :param clip_window_loq: Window of original q ponts to evaluate for hi q clip min/max
+    :type clip_window: int
     :return I_spline: Evaluation of spline fit at q_grid points
     :type I_spline: np array
     """
@@ -119,7 +134,69 @@ def fit_interpolate_spline(q_original, I_original, q_grid, s=0.05, k=3):
     spl = BSpline(*splrep(q_original, I_original, s=s, k=k))
     I_spline = spl(q_grid)
 
+    if clip:
+        #'cap' spline interp valueas at 1.5x q_original min/max to avoid issues with metric later when spline blows up outside fit range
+        I_spline = clip_spline_extrapolation_lowq(
+            q_original, I_original, q_grid, I_spline, n_window=clip_window_loq
+        )
+        I_spline = clip_spline_extrapolation_hiq(
+            q_original, I_original, q_grid, I_spline, n_window=clip_window_hiq
+        )
+
     return I_spline
+
+
+def clip_spline_extrapolation_hiq(
+    q_original, I_original, q_grid, I_spline, n_window=50
+):
+    """
+    Clip spline fit blow-ups in hi-q extrapolation range. For spline extrapolation q range, if I_spline is outside max/min of I_original in last n_window q points, set to max/min seen in window.
+    """
+    # check that q_grid is greater than q_original
+    if q_original[-1] > q_grid[-1]:
+        return I_spline
+    else:
+        q_grid_og_max_ind = np.where(q_grid > q_original[-1])[0][0]
+        window_max = np.max(I_original[-n_window:])
+        window_min = np.min(I_original[-n_window:])
+
+        I_spline_extrap = I_spline[q_grid_og_max_ind:]
+
+        I_spline_extrap[np.where(I_spline_extrap > window_max)] = window_max
+        I_spline_extrap[np.where(I_spline_extrap < window_min)] = window_min
+
+        I_spline_clip = I_spline
+        I_spline_clip[q_grid_og_max_ind:] = I_spline_extrap
+
+        return I_spline_clip
+
+
+def clip_spline_extrapolation_lowq(
+    q_original, I_original, q_grid, I_spline, n_window=10
+):
+    """
+    Clip spline fit blow-ups in hi-q extrapolation range. For spline extrapolation q range, if I_spline is outside max/min of I_original in last n_window q points, set to max/min seen in window.
+    """
+    # check that q_grid is greater than q_original
+    if q_original[0] < q_grid[0]:
+        return I_spline
+    else:
+        q_grid_og_min_ind = np.where(q_grid < q_original[0])[0][-1]
+        window_max = np.max(I_original[:n_window])
+        window_min = np.min(I_original[:n_window])
+
+        print(window_max)
+        print(window_min)
+        print(q_grid_og_min_ind)
+        I_spline_extrap = I_spline[:q_grid_og_min_ind]
+
+        I_spline_extrap[np.where(I_spline_extrap > window_max)] = window_max
+        I_spline_extrap[np.where(I_spline_extrap < window_min)] = window_min
+
+        I_spline_clip = I_spline
+        I_spline_clip[:q_grid_og_min_ind] = I_spline_extrap
+
+        return I_spline_clip
 
 
 def scale_intensity_highqavg(I_measured, I_target, n_avg):

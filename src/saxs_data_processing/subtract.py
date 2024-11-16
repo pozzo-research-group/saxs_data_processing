@@ -120,6 +120,9 @@ def select_valid_data(signal, background, lowq_thresh=5, hiq_thresh=5, hiq_avg_p
                         hiq_lim = i
                         break
 
+    hiq_lim = i
+    warnings.warn("No hiq lim satisfying threshold found, setting value to q max")
+
     if lowq_lim is None:
         warnings.warn(
             "Failed to find region of valid data (low q limit not found). Check that your sample scatters reasonably well"
@@ -192,7 +195,7 @@ def chop_subtract(
             hiq_thresh=hiq_thresh,
             hiq_avg_pts=hiq_avg_pts,
         )
-
+    # print(f'lo q: {loq}, hi q: {hiq}')
     if (loq == None) or (hiq == None):
         warnings.warn("Issue during data selection, check data quality")
         return None

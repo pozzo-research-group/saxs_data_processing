@@ -6,7 +6,9 @@ import numpy as np
 from saxs_data_processing import io
 from saxs_data_processing.sasview_fitting import fit_power_law
 
-from apdist import AmplitudePhaseDistance as dist
+# from apdist import AmplitudePhaseDistance as dist
+from apdist.torch import AmplitudePhaseDistance as torch_apdist
+import torch
 
 
 def target_intensities(q, r, pdi, sld_particle, sld_solvent):
@@ -68,6 +70,7 @@ def calculate_distance_powerlawscreen(
     """
 
     data_sas = io.df_to_sasdata(data)
+    # print(data_sas)
     power_results = fit_power_law(data_sas)
 
     if float(power_results[0]["chisq"].split("(")[0]) < cutoff_chisq:
@@ -116,8 +119,12 @@ def ap_distance(q_grid, I_measured, I_target, optim="DP", grid_dim=10):
         len(set((len(q_grid), len(I_measured), len(I_target)))) == 1
     ), "q_grid, I_measured, and I_target all need to be the same length"
 
-    amplitude, phase = dist(
-        q_grid, I_measured, I_target, optim=optim, grid_dim=grid_dim
+    amplitude, phase, _ = torch_apdist(
+        torch.from_numpy(q_grid),
+        torch.from_numpy(I_measured),
+        torch.from_numpy(I_target),
+        optim=optim,
+        grid_dim=grid_dim,
     )
 
     return amplitude, phase
