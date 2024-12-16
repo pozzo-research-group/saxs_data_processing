@@ -1,0 +1,8 @@
+numpy
+pandas
+scipy
+sasmodels
+bumps
+sasdata
+torch
+scikit-learn
