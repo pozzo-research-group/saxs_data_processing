@@ -7,7 +7,7 @@ from saxs_data_processing import io
 from saxs_data_processing.sasview_fitting import fit_power_law
 
 # from apdist import AmplitudePhaseDistance as dist
-from apdist.torch import AmplitudePhaseDistance as torch_apdist
+from apdist.distances import AmplitudePhaseDistance as dist
 import torch
 
 
@@ -52,7 +52,12 @@ def rmse_distance(measured_I, target_I, log=True):
 
 
 def calculate_distance_powerlawscreen(
-    data, target_I, cutoff_chisq=200, power_law_value=5, normalize=True
+    data_powerlaw,
+    data_rmse,
+    target_I,
+    cutoff_chisq=200,
+    power_law_value=5,
+    normalize=True,
 ):
     """
     Return RMSE distance for data fit poorly by power law fit, constant value for those fit well by power law.
@@ -69,14 +74,14 @@ def calculate_distance_powerlawscreen(
     :type normalize: bool
     """
 
-    data_sas = io.df_to_sasdata(data)
+    data_sas = io.df_to_sasdata(data_powerlaw)
     # print(data_sas)
     power_results = fit_power_law(data_sas)
 
     if float(power_results[0]["chisq"].split("(")[0]) < cutoff_chisq:
         distance = power_law_value
     else:
-        meas_I = data["I"]
+        meas_I = data_rmse["I"]
         if normalize:
             target_I = target_I / target_I[0]
             meas_I = meas_I / meas_I.iloc[0]
@@ -119,10 +124,10 @@ def ap_distance(q_grid, I_measured, I_target, optim="DP", grid_dim=10):
         len(set((len(q_grid), len(I_measured), len(I_target)))) == 1
     ), "q_grid, I_measured, and I_target all need to be the same length"
 
-    amplitude, phase, _ = torch_apdist(
-        torch.from_numpy(q_grid),
-        torch.from_numpy(I_measured),
-        torch.from_numpy(I_target),
+    amplitude, phase = dist(
+        q_grid,
+        I_measured,
+        I_target,
         optim=optim,
         grid_dim=grid_dim,
     )

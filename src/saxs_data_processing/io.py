@@ -198,4 +198,4 @@ def load_biocube_data_with_background(background_fps, bio_conf):
 
         uuid2bkg[uuid_val] = bkg
 
-    return data, uuid2bkg
+    return data, uuid2bkg, data_fps

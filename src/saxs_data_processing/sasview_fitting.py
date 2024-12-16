@@ -36,3 +36,48 @@ def fit_power_law(data):
     results["chisq"] = problem.chisq_str()
 
     return results, result, problem
+
+
+def fit_sphere(data, polydispersity=True, r_init=600):
+    """
+    Fit a sphere model to data. Works in angstroms
+
+    :param data: q/I/sig data in Brenden df format
+    :type data: pandas dataframe
+    :param polydispersity: whether or not to fit lognormal polydispersity parameters
+    :type polydispersity: bool
+    :param r_init: initial radius guess, in angstroms. default 600 (120nm diameter particle)
+    :type r_init: int
+    :return results: dict of result values
+    :rtype results: dict
+    :return result: fit(problem) object
+    :rtype results: bumps problem result
+    :return problem: bumps problem
+    :rtype problem: bumps problem
+    """
+
+    kernel = load_model("sphere")
+
+    # set up model
+    pars = dict(scale=1, background=0.001, sld=1, radius=50)
+    model = Model(kernel, **pars)
+    model.radius.range(10, 5000)
+    model.scale.range(0, 5)
+    if polydispersity:
+        model.radius_pd.range(0, 1)
+        model.radius_pd_type = "lognormal"
+
+    M = Experiment(data=data, model=model)
+    problem = FitProblem(M)
+
+    result = fit(problem, method="amoeba")
+
+    results = {}
+
+    for l, v, dv in zip(problem.labels(), result.x, result.dx):
+        results[l] = v
+        results[l + "_uncertainty"] = dv
+
+    results["chisq"] = problem.chisq_str()
+
+    return results, result, problem
