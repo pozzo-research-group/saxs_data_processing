@@ -7,3 +7,18 @@ build-backend = "setuptools.build_meta"
 # For smarter version schemes and other configuration options,
 # check out https://github.com/pypa/setuptools_scm
 version_scheme = "no-guess-dev"
+
+[project]
+name = "saxs_data_processing"
+version = "0.0.1"
+dependencies = [
+    "numpy",
+    "pandas",
+    "scikit-learn",
+    "sasmodels",
+    "sasdata",
+    "bumps",
+    "apdist @ git+https://github.com/kiranvad/Amplitude-Phase-Distance.git@main",
+    "warping @ git+https://github.com/kiranvad/warping.git@main",
+    "funcshape @ git+https://github.com/kiranvad/funcshape.git@main"
+]
