@@ -38,7 +38,9 @@ def fit_power_law(data):
     return results, result, problem
 
 
-def fit_sphere(data, polydispersity=True, r_init=600):
+def fit_sphere(
+    data, polydispersity=True, r_init=600, pd_init=0.15, pd_distribution="lognormal"
+):
     """
     Fit a sphere model to data. Works in angstroms
 
@@ -59,13 +61,13 @@ def fit_sphere(data, polydispersity=True, r_init=600):
     kernel = load_model("sphere")
 
     # set up model
-    pars = dict(scale=1, background=0.001, sld=1, radius=50)
+    pars = dict(scale=1, background=0.001, sld=1, radius=r_init, radius_pd=pd_init)
     model = Model(kernel, **pars)
     model.radius.range(10, 5000)
     model.scale.range(0, 5)
     if polydispersity:
         model.radius_pd.range(0, 1)
-        model.radius_pd_type = "lognormal"
+        model.radius_pd_type = pd_distribution
 
     M = Experiment(data=data, model=model)
     problem = FitProblem(M)
