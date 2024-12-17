@@ -26,7 +26,6 @@ def ratio_running_average(a, b, n_pts=10):
     assert len(a) == len(b), "a and b must have same number of elements"
 
     ratio = a / b
-
     running_average = np.convolve(ratio, np.ones(n_pts) / n_pts, mode="same")
 
     return running_average
