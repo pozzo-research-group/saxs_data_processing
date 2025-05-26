@@ -8,6 +8,7 @@ from saxs_data_processing.sasview_fitting import fit_power_law
 
 # from apdist import AmplitudePhaseDistance as dist
 from apdist.distances import AmplitudePhaseDistance as dist
+from apdist.torch import AmplitudePhaseDistance as torch_apdist
 import torch
 
 
@@ -163,7 +164,7 @@ def ap_distance_torch(q_grid, I_measured, I_target, optim_kwargs):
         len(set((len(q_grid), len(I_measured), len(I_target)))) == 1
     ), "q_grid, I_measured, and I_target all need to be the same length"
 
-    amplitude, phase = dist(
+    amplitude, phase = torch_apdist(
         torch.from_numpy(q_grid),
         torch.from_numpy(I_measured),
         torch.from_numpy(I_target),
