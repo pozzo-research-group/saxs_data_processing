@@ -135,6 +135,44 @@ def ap_distance(q_grid, I_measured, I_target, optim="DP", grid_dim=10):
     return amplitude, phase
 
 
+def ap_distance_torch(q_grid, I_measured, I_target, optim_kwargs):
+    """
+    Calculate amplitude-phase distance between I_measured and I_target.
+
+    Read more on amplitude-phase distance here: https://github.com/kiranvad/Amplitude-Phase-Distance
+
+    I_measured and I_target should share q_grid q vector. q_grid and intensities should be in log space. I_measured should be denoised and smooothed. I_measured and I_target should be scaled onto each other.
+
+    :param q_grid: Linear, evenly spaced q-vector grid in log10(q) space. ie, np.linspace(np.log10(q_min), np.log10(q_max)) Do not use q from measurement/instrument - q
+    :type q_grid: np array
+    :param I_measured: Measured intensity. Evaluated on q_grid (ie through a Bspline interpolation) and in log10(I) space.
+    :type I_measured: np array
+    :param I_target: Calculated target scattering intensity
+    :type I_target: np array
+    :param optim: apdist optimizer type for SRSF minimization. "DP" or "RLBFGS"
+    :type optim: str
+    :param grid_dim: ap dist grid_dim param. Default 10
+    :type grid_dim: int
+    :return amplitude: Amplitude (y-axis variation) distance
+    :rtype amplitude: float
+    :return phase: Phase (x-axis variation) distance
+    :rtype phase: float
+    """
+
+    assert (
+        len(set((len(q_grid), len(I_measured), len(I_target)))) == 1
+    ), "q_grid, I_measured, and I_target all need to be the same length"
+
+    amplitude, phase = dist(
+        torch.from_numpy(q_grid),
+        torch.from_numpy(I_measured),
+        torch.from_numpy(I_target),
+        **optim_kwargs,
+    )
+
+    return amplitude, phase
+
+
 def raw_data_to_apdistance(sample_data, background_data, target_intensity):
     """
     Convenience function to perform entire processing pipeline:
