@@ -164,7 +164,7 @@ def ap_distance_torch(q_grid, I_measured, I_target, optim_kwargs):
         len(set((len(q_grid), len(I_measured), len(I_target)))) == 1
     ), "q_grid, I_measured, and I_target all need to be the same length"
 
-    amplitude, phase = torch_apdist(
+    amplitude, phase, _ = torch_apdist(
         torch.from_numpy(q_grid),
         torch.from_numpy(I_measured),
         torch.from_numpy(I_target),
